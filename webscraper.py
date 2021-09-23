@@ -1,6 +1,4 @@
-from typing import cast
 import requests
-from requests.api import request
 from requests.exceptions import HTTPError, Timeout
 from bs4 import BeautifulSoup
 import pprint
@@ -14,12 +12,12 @@ def main():
     clearFile()
 
     # URL where scraping will begin, has 19 cars
-    baseURL = "https://www.carsales.com.au/cars/"
+    baseURL = "https://www.carsales.com.au/cars/?q=Service.carsales.&offset="
 
     # Storing max number of pages to scrap
-    PAGEMAXNUM = 3
+    PAGEMAXNUM = 21
 
-    # Used to setting each car objects ID, and limiting amount of carobj's created
+    # Used to setting each car objects ID, and limiting amount of carObjs created
     carsNum = 0
 
     # Storing each page url in a separate list, each url after the base url has 12 cars
@@ -37,15 +35,12 @@ def main():
     }
 
     # Scraping url of each page up to PAGEMAXNUM
-    pageUrls = extractPageUrls(pageUrls, PAGEMAXNUM, baseURL, headers)
+    pageUrls = extractPageUrls(pageUrls, PAGEMAXNUM, baseURL)
     # Appending the base url to the front of the list
-    pageUrls.insert(0, baseURL)
-
     # Scraping url for each car on each page
-    urls = extractCarItemUrls(pageUrls, carItemUrls, headers)
+    carItemUrls = extractCarItemUrls(pageUrls, carItemUrls, headers)
     # Scraping data from car item url
-
-    extractCarData(urls, headers, cars, carsNum)
+    extractCarData(carItemUrls, headers, cars, carsNum)
     # Printing data in car with pretty print
 
     # Writing the car data to a json file
@@ -60,22 +55,12 @@ def clearFile():
         os.remove("data.json")
 
 
-def extractPageUrls(pageUrls, PAGEMAXNUM, baseURL, headers):
-    try:
-        response = requests.get(baseURL, headers=headers, timeout=3)
-        # If the response was successful, no Exception will be raised
-        response.raise_for_status()
-    except HTTPError as http_err:
-        print(f'HTTP error occurred: {http_err}')  # Python 3.6
-    except Exception as err:
-        print(f'Other error occurred: {err}')  # Python 3.6
-    else:
-        content = BeautifulSoup(response.content, "html.parser")
+def extractPageUrls(pageUrls, PAGEMAXNUM, baseURL):
+    # Since each url repeats by 12, can simply run a loop to capture each url
+    for i in range(2, PAGEMAXNUM):
+        num = i * 12
+        pageUrls.append(f"{baseURL}{num}")
 
-        for link in content.select("a[class=page-link]"):
-            href = link['href']
-            url = ''.join(('https://www.carsales.com.au', href))
-            pageUrls.append(url)
     return pageUrls
 
 
@@ -135,7 +120,7 @@ def extractData(content, carsNum):
         "transmission": transmission,
         "image": image
     }
-    print(f"CarsNum: {carsNum}")
+    #print(f"CarsNum: {carsNum}")
     carsNum += 1
     return carObj
 
@@ -153,11 +138,9 @@ def extractTitle(content):
 
 
 def extractImage(content):
-    srcList = []
     for div in content.find_all("div", {"class": "gallery-main"}):
         for image in div.select("img"):
-            srcList.append(str(image['src']))
-    return srcList
+            return str(image['src'])
 
 
 def extractPrice(content):
